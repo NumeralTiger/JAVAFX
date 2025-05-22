@@ -29,7 +29,7 @@ public final class Constants {
 
     // UI/Rendering related constants (can be adjusted for visual clarity)
     public static final double SUN_DISPLAY_RADIUS_MULTIPLIER = 50.0; // To make the Sun visible, as its real size is tiny on an AU scale
-    public static final double PLANET_DISPLAY_RADIUS_MULTIPLIER = 10.0; // To make planets visible
+    public static final double PLANET_DISPLAY_RADIUS_MULTIPLIER = 1000.0; // To make planets visible
     public static final int MAX_TRAIL_LENGTH = 500; // Longer trails for clearer orbits
 
     // Prevent instantiation

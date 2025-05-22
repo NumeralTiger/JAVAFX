@@ -65,43 +65,40 @@ public class PhysicsEngine {
 
         // Check for overlap
         if (dist < (body1.getRadius() + body2.getRadius())) {
-            // Collision detected!
+            // Normalize the collision normal
+            Vector2D collisionNormal = normal.scale(1.0 / dist);
 
-            // 1. Move bodies apart to prevent sticking (simple separation along normal)
-            double overlap = (body1.getRadius() + body2.getRadius()) - dist;
-            Vector2D separationVector = normal.normalize().scale(overlap * 0.5); // Move each body half the overlap
-            body1.setPosition(body1.getPosition().subtract(separationVector));
-            body2.setPosition(body2.getPosition().add(separationVector));
+            // Calculate relative velocity
+            Vector2D relativeVelocity = body2.getVelocity().subtract(body1.getVelocity());
 
+            // Calculate relative velocity along normal
+            double normalVelocity = relativeVelocity.dotProduct(collisionNormal);
 
-            // 2. Relative velocity
-            Vector2D relativeVelocity = body1.getVelocity().subtract(body2.getVelocity());
+            // Only proceed if objects are moving toward each other
+            if (normalVelocity < 0) {
+                // Calculate restitution coefficient based on masses
+                // Larger mass differences result in more energy loss
+                double massRatio = Math.min(body1.getMass(), body2.getMass()) / 
+                                 Math.max(body1.getMass(), body2.getMass());
+                double restitution = Constants.COLLISION_ELASTICITY * massRatio;
 
-            // 3. Normal vector (direction of impact)
-            Vector2D collisionNormal = normal.normalize();
+                // Calculate impulse scalar
+                double j = -(1 + restitution) * normalVelocity;
+                j /= (1 / body1.getMass() + 1 / body2.getMass());
 
-            // 4. Relative velocity along the normal
-            double velocityAlongNormal = relativeVelocity.dotProduct(collisionNormal);
+                // Apply impulse
+                Vector2D impulse = collisionNormal.scale(j);
+                
+                // Update velocities based on conservation of momentum
+                body1.setVelocity(body1.getVelocity().subtract(impulse.scale(1 / body1.getMass())));
+                body2.setVelocity(body2.getVelocity().add(impulse.scale(1 / body2.getMass())));
 
-            // Do not resolve if velocities are separating
-            if (velocityAlongNormal > 0) {
-                return; // Bodies are already moving apart
+                // Separate the bodies to prevent sticking
+                double overlap = (body1.getRadius() + body2.getRadius()) - dist;
+                Vector2D separation = collisionNormal.scale(overlap * 0.5);
+                body1.setPosition(body1.getPosition().subtract(separation));
+                body2.setPosition(body2.getPosition().add(separation));
             }
-
-            // 5. Impulse scalar
-            // Formula for 2D elastic collision impulse
-            double impulseScalar = -(1 + Constants.COLLISION_ELASTICITY) * velocityAlongNormal /
-                                   (1 / body1.getMass() + 1 / body2.getMass());
-
-            // 6. Impulse vector
-            Vector2D impulse = collisionNormal.scale(impulseScalar);
-
-            // 7. Apply impulse to velocities
-            body1.setVelocity(body1.getVelocity().add(impulse.scale(1 / body1.getMass())));
-            body2.setVelocity(body2.getVelocity().subtract(impulse.scale(1 / body2.getMass())));
-
-            // Optional: for small overlaps or floating point issues, you might need to slightly
-            // adjust positions again or add a small repulsive force.
         }
     }
 
@@ -120,51 +117,14 @@ public class PhysicsEngine {
      * Detects and resolves collisions between all bodies.
      * @param bodies The list of bodies.
      */
-    public void detectAndResolveCollisions(List<Body> bodies) {
-        // Use an iterator for safe removal of bodies during iteration
+        public void detectAndResolveCollisions(List<Body> bodies) {
         for (int i = 0; i < bodies.size(); i++) {
             Body body1 = bodies.get(i);
-            if (body1 == null) continue; // Skip if body was removed
-
             for (int j = i + 1; j < bodies.size(); j++) {
                 Body body2 = bodies.get(j);
-                if (body2 == null) continue; // Skip if body was removed
-
-                // Check distance for collision
-                double distanceSq = body1.getPosition().distanceSq(body2.getPosition());
-                double combinedRadii = body1.getRadius() + body2.getRadius();
-
-                if (distanceSq < combinedRadii * combinedRadii) {
-                    // Collision detected!
-                    // Determine which body is larger (usually the "star")
-                    Body largerBody = (body1.getMass() >= body2.getMass()) ? body1 : body2;
-                    Body smallerBody = (body1.getMass() < body2.getMass()) ? body1 : body2;
-
-                    // Option 1: Simulate subsumption (smaller body absorbed by larger)
-                    // This is more realistic for a small asteroid hitting the sun.
-                    // The larger body's mass and momentum would increase.
-                    // The smaller body is "destroyed" (removed from simulation).
-
-                    // Update larger body's properties (conservation of momentum)
-                    Vector2D newVelocity = (largerBody.getVelocity().scale(largerBody.getMass())
-                                         .add(smallerBody.getVelocity().scale(smallerBody.getMass())))
-                                         .scale(1.0 / (largerBody.getMass() + smallerBody.getMass()));
-                    largerBody.setVelocity(newVelocity);
-                    largerBody.setMass(largerBody.getMass() + smallerBody.getMass());
-                    // Optionally: increase radius of larger body based on new mass (e.g., radius ~ mass^(1/3))
-                    // largerBody.setRadius(Math.pow(largerBody.getMass(), 1.0/3.0) * some_scale_factor);
-
-                    // Mark smaller body for removal. Important: cannot remove directly from `bodies` list
-                    // while iterating with index-based for loops. Set to null and clean up later.
-                    if (body1 == smallerBody) {
-                        bodies.set(i, null); // Set to null instead of removing to avoid index shifting
-                    } else {
-                        bodies.set(j, null);
-                    }
-                    System.out.println(smallerBody.getId() + " was subsumed by " + largerBody.getId());
-                }
+                handleElasticCollision(body1, body2);
             }
-            bodies.removeIf(b -> b == null);
         }
     }
+    
 }
