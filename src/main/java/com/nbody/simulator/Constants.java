@@ -9,9 +9,9 @@ public final class Constants {
     // Gravitational constant (adjust for your chosen units!)
     // If 1 distance unit = 1 AU, 1 mass unit = 1 Solar Mass, 1 time unit = 1 Earth Year
     // Then G can be set to approximately 4 * PI^2
-    // For visual simulation, you might still need to tweak this
-    // A common value used for scaled G, where AU/year/solar_mass are units:
-    public static final double GRAVITATIONAL_CONSTANT = 39.478; // Approx 4 * PI^2 (AU^3 / (SolarMass * Year^2))
+    // For visual simulation, you might still need to tweak this    // A common value used for scaled G, where AU/year/solar_mass are units:
+    public static double GRAVITATIONAL_CONSTANT = 39.478; // Approx 4 * PI^2 (AU^3 / (SolarMass * Year^2))
+    public static double BASE_GRAVITATIONAL_CONSTANT = 39.478; // Keep the original value for reference
     // Or you can find values used in other N-body solar system simulations online.
 
     // Minimum distance squared between bodies to avoid division by zero
@@ -28,8 +28,8 @@ public final class Constants {
     public static final double TIME_STEP = 0.001; // In Earth Years per simulation step
 
     // UI/Rendering related constants (can be adjusted for visual clarity)
-    public static final double SUN_DISPLAY_RADIUS_MULTIPLIER = 50.0; // To make the Sun visible, as its real size is tiny on an AU scale
-    public static final double PLANET_DISPLAY_RADIUS_MULTIPLIER = 1000.0; // To make planets visible
+    public static final double SUN_DISPLAY_RADIUS_MULTIPLIER = 50000.0; // To make the Sun visible, as its real size is tiny on an AU scale
+    public static final double PLANET_DISPLAY_RADIUS_MULTIPLIER = 1000000.0; // To make planets visible
     public static final int MAX_TRAIL_LENGTH = 500; // Longer trails for clearer orbits
 
     // Prevent instantiation

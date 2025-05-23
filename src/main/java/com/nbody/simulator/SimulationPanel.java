@@ -2,9 +2,15 @@ package com.nbody.simulator;
 
 import java.util.List;
 
+import javafx.geometry.Insets;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 
 /**
@@ -14,20 +20,27 @@ public class SimulationPanel extends Pane {
 
     private Canvas canvas;
     private Simulator simulator;
+    private VBox controlPanel;
+    private Slider zoomSlider;
 
     // Camera/Viewport properties
     private double offsetX = 0;
     private double offsetY = 0;
-    private double zoom = 1.0;
+    private double zoom = 10.0;
 
     public SimulationPanel(Simulator simulator) {
         this.simulator = simulator;
         this.canvas = new Canvas(); // Canvas will resize with pane
-        this.getChildren().add(canvas);
+        
+        // Create control panel
+        // setupControlPanel();
+        
+        // Add canvas and control panel to the pane
+        this.getChildren().addAll(canvas, controlPanel);
 
-        // Bind canvas size to pane size
+        // Bind canvas size to pane size, but leave space for control panel
         canvas.widthProperty().bind(this.widthProperty());
-        canvas.heightProperty().bind(this.heightProperty());
+        canvas.heightProperty().bind(this.heightProperty().subtract(controlPanel.heightProperty()));
 
         // Initial drawing
         draw();
@@ -85,13 +98,13 @@ public class SimulationPanel extends Pane {
             // gc.fillText(body.getId() + " (" + (int)body.getMass() + "kg)", body.getPosition().x + displayRadius + 2, body.getPosition().y);
         }
 
-        gc.restore(); // Restore to previous state (undo transformations)
+        // gc.restore(); // Restore to previous state (undo transformations)
 
-        // Draw debug info/overlays (not affected by camera)
-        gc.setFill(Color.WHITE);
-        gc.fillText(String.format("Time: %.2f s", simulator.getSimulationTime()), 10, 20);
-        gc.fillText(String.format("Zoom: %.2f", zoom), 10, 35);
-        gc.fillText(String.format("Bodies: %d", simulator.getBodies().size()), 10, 50);
+        // // Draw debug info/overlays (not affected by camera)
+        // gc.setFill(Color.WHITE);
+        // gc.fillText(String.format("Time: %.2f s", simulator.getSimulationTime()), 10, 20);
+        // gc.fillText(String.format("Zoom: %.2f", zoom), 10, 35);
+        // gc.fillText(String.format("Bodies: %d", simulator.getBodies().size()), 10, 50);
     }
 
     //region Camera Control Methods

@@ -12,12 +12,13 @@ public class PhysicsEngine {
      * Calculates the gravitational forces between all bodies and updates their accelerations.
      * Uses Newton's Law of Universal Gravitation.
      * @param bodies The list of bodies in the simulation.
-     */
-    public void calculateGravitationalForces(List<Body> bodies) {
+     */    public void calculateGravitationalForces(List<Body> bodies) {
         // Reset accelerations for all bodies
         for (Body body : bodies) {
             body.resetAcceleration();
         }
+
+        double G = Constants.GRAVITATIONAL_CONSTANT; // Get current G value
 
         // Calculate forces between all unique pairs of bodies
         for (int i = 0; i < bodies.size(); i++) {
@@ -34,11 +35,9 @@ public class PhysicsEngine {
                     distanceSq = Constants.MIN_DISTANCE_SQ;
                 }
 
-                double distance = Math.sqrt(distanceSq);
-
-                // Calculate gravitational force magnitude
+                double distance = Math.sqrt(distanceSq);                // Calculate gravitational force magnitude
                 // F = G * (m1 * m2) / r^2
-                double forceMagnitude = Constants.GRAVITATIONAL_CONSTANT * body1.getMass() * body2.getMass() / distanceSq;
+                double forceMagnitude = G * body1.getMass() * body2.getMass() / distanceSq;
 
                 // Calculate force vector (direction and magnitude)
                 Vector2D force = r.normalize().scale(forceMagnitude);
@@ -107,6 +106,7 @@ public class PhysicsEngine {
      * @param bodies The list of bodies.
      * @param deltaTime The time step.
      */
+    
     public void updateBodyPositionsAndVelocities(List<Body> bodies, double deltaTime) {
         for (Body body : bodies) {
             body.update(deltaTime);
