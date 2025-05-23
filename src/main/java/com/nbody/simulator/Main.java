@@ -78,7 +78,7 @@ public class Main extends Application {
 
         Label speedLabel = new Label("Simulation Speed:");
         // Slider: min speed, max speed, initial speed
-        speedSlider = new Slider(0.1, 100, 1.0); // Speed from 0.1x to 100x
+        speedSlider = new Slider(0.1, 5, 1.0); // Speed from 0.1x to 100x
         speedSlider.setShowTickLabels(true);
         speedSlider.setShowTickMarks(true);
         speedSlider.setMajorTickUnit(25);
@@ -147,7 +147,7 @@ public class Main extends Application {
         gameLoop.start();      
 
         primaryStage.setScene(scene);
-        primaryStage.setTitle("N-body Gravity Simulator (Enhanced)");
+        primaryStage.setTitle("Gravity Simulator: Interactive");
         primaryStage.show();
     }
 
@@ -160,6 +160,86 @@ public class Main extends Application {
         // These are arbitrary values for visualization, not direct physical scaling for this example.
         double sunDisplayRadius = 0.2;  // Make Sun larger on screen
         double earthDisplayRadius = 0.05; // Make Earth smaller, but visible
+        double mercuryDisplayRadius = 0.02; // Mercury's display radius
+        double venusDisplayRadius = 0.03; // Venus's display radius 
+        double marsDisplayRadius = 0.025; // Mars's display radius
+        double jupiterDisplayRadius = 0.1; // Jupiter's display radius
+        double saturnDisplayRadius = 0.08; // Saturn's display radius
+        double uranusDisplayRadius = 0.06; // Uranus's display radius
+        double neptuneDisplayRadius = 0.05; // Neptune's display radius
+
+
+        double mercuryX = 0.39; // Mercury's distance from Sun in AU
+        double venusX = 0.72; // Venus's distance from Sun in AU
+        double marsX = 1.52; // Mars's distance from Sun in AU
+        double jupiterX = 5.2; // Jupiter's distance from Sun in AU
+        double saturnX = 9.58; // Saturn's distance from Sun in AU
+        double uranusX = 19.22; // Uranus's distance from Sun in AU
+        double neptuneX = 30.05; // Neptune's distance from Sun in AU
+        
+        double mercuryOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / mercuryX);
+        double venusOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / venusX);
+        double marsOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / marsX);
+        double jupiterOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / jupiterX);
+        double saturnOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / saturnX);
+        double uranusOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / uranusX);
+        double neptuneOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / neptuneX);
+
+        // Create and add the other planets
+        CelestialBody3D mercury3D = new CelestialBody3D("Mercury", mercuryDisplayRadius, Color.GRAY);
+        mercury3D.setPosition(mercuryX, 0, 0);  
+        mercury3D.setRotationSpeed(0.24); // Visual rotation of the sphere
+        celestialBodies.put("Mercury", mercury3D);
+        solarSystem.getChildren().add(mercury3D.getNode()); //
+        simulator.addBody(new Body("Mercury", 3.285E-7, mercuryDisplayRadius, Color.GRAY, // Mercury's mass
+                new Vector2D(mercuryX, 0), new Vector2D(0, mercuryOrbitalVelocity))); // Initial position and velocity
+
+        CelestialBody3D venus3D = new CelestialBody3D("Venus", venusDisplayRadius, Color.YELLOW);   
+        venus3D.setPosition(venusX, 0, 0);
+        venus3D.setRotationSpeed(0.24); // Visual rotation of the sphere
+        celestialBodies.put("Venus", venus3D);
+        solarSystem.getChildren().add(venus3D.getNode()); //
+        simulator.addBody(new Body("Venus", 4.867E-6, venusDisplayRadius, Color.YELLOW, // Venus's mass
+                new Vector2D(venusX, 0), new Vector2D(0, venusOrbitalVelocity))); // Initial position and velocity
+        CelestialBody3D mars3D = new CelestialBody3D("Mars", marsDisplayRadius, Color.RED);
+        mars3D.setPosition(marsX, 0, 0);
+        mars3D.setRotationSpeed(0.24); // Visual rotation of the sphere
+        celestialBodies.put("Mars", mars3D);
+        solarSystem.getChildren().add(mars3D.getNode()); //
+        simulator.addBody(new Body("Mars", 3.21E-7, marsDisplayRadius, Color.RED, // Mars's mass
+                new Vector2D(marsX, 0), new Vector2D(0, marsOrbitalVelocity))); // Initial position and velocity
+
+        CelestialBody3D jupiter3D = new CelestialBody3D("Jupiter", jupiterDisplayRadius, Color.rgb(216, 202, 157));
+        jupiter3D.setPosition(jupiterX, 0, 0);
+        jupiter3D.setRotationSpeed(0.24); // Visual rotation of the sphere
+        celestialBodies.put("Jupiter", jupiter3D);
+        solarSystem.getChildren().add(jupiter3D.getNode()); //
+        simulator.addBody(new Body("Jupiter", 1.898E-3, jupiterDisplayRadius, Color.ORANGE, // Jupiter's mass
+                new Vector2D(jupiterX, 0), new Vector2D(0, jupiterOrbitalVelocity))); // Initial position and velocity  
+
+        CelestialBody3D saturn3D = new CelestialBody3D("Saturn", saturnDisplayRadius, Color.YELLOW);
+        saturn3D.setPosition(saturnX, 0, 0);
+        saturn3D.setRotationSpeed(0.24); // Visual rotation of the sphere
+        celestialBodies.put("Saturn", saturn3D);
+        solarSystem.getChildren().add(saturn3D.getNode()); //
+        simulator.addBody(new Body("Saturn", 5.683E-4, saturnDisplayRadius, Color.YELLOW, // Saturn's mass
+                new Vector2D(saturnX, 0), new Vector2D(0, saturnOrbitalVelocity))); // Initial position and velocit
+        CelestialBody3D uranus3D = new CelestialBody3D("Uranus", uranusDisplayRadius, Color.CYAN);
+        uranus3D.setPosition(uranusX, 0, 0);
+        uranus3D.setRotationSpeed(0.24); // Visual rotation of the sphere
+        celestialBodies.put("Uranus", uranus3D);
+        solarSystem.getChildren().add(uranus3D.getNode()); //
+        simulator.addBody(new Body("Uranus", 8.681E-4, uranusDisplayRadius, Color.CYAN, // Uranus's mass
+                new Vector2D(uranusX, 0), new Vector2D(0, uranusOrbitalVelocity))); // Initial position and velocity
+
+        CelestialBody3D neptune3D = new CelestialBody3D("Neptune", neptuneX, Color.BLUE);
+        neptune3D.setPosition(neptuneX, 0, 0);
+        neptune3D.setRotationSpeed(0.24); // Visual rotation of the sphere
+        celestialBodies.put("Neptune", neptune3D);
+        solarSystem.getChildren().add(neptune3D.getNode()); //
+        simulator.addBody(new Body("Neptune", 1.024E-4, neptuneDisplayRadius, Color.BLUE, // Neptune's mass
+                new Vector2D(neptuneX, 0), new Vector2D(0, neptuneOrbitalVelocity))); // Initial position and velocity
+
 
         // Create and add the Sun
         CelestialBody3D sun3D = new CelestialBody3D("Sun", sunDisplayRadius, "/2k_sun.jpg");
@@ -171,9 +251,9 @@ public class Main extends Application {
         // and 2D drawing in SimulationPanel (if used).
         // We use the same displayRadius here for consistency.
         simulator.addBody(new Body("Sun", 1.0, sunDisplayRadius, Color.YELLOW, // Sun's mass is 1.0
-                new Vector2D(0, 0), new Vector2D(0, 0))); //
+                new Vector2D(0, 0), new Vector2D(0.01, 0.01))); //
 
-        // Create Earth
+        // Create Earthf
         CelestialBody3D earth3D = new CelestialBody3D("Earth", earthDisplayRadius, "/earth/earth-d.jpg"); //
         double earthX = 1.0;  // Set Earth's distance from Sun to 1.0 AU
         earth3D.setPosition(earthX, 0, 0); //
@@ -186,7 +266,7 @@ public class Main extends Application {
         // M_sun is 1.0 (as per Sun's body definition)
         // G is Constants.GRAVITATIONAL_CONSTANT
         // r is earthX
-        double earthOrbitalVelocity = Math.sqrt((Constants.GRAVITATIONAL_CONSTANT * 1.0) / earthX);
+        double earthOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / earthX);
 
         simulator.addBody(new Body("Earth", 3.003E-6, earthDisplayRadius, Color.BLUE, // Earth's mass
                 new Vector2D(earthX, 0), new Vector2D(0, earthOrbitalVelocity))); // Initial position and corrected velocity

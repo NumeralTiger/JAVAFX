@@ -26,7 +26,7 @@ public class SimulationPanel extends Pane {
     // Camera/Viewport properties
     private double offsetX = 0;
     private double offsetY = 0;
-    private double zoom = 10.0;
+    private double zoom = 0.01;
 
     public SimulationPanel(Simulator simulator) {
         this.simulator = simulator;
