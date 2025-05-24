@@ -18,20 +18,26 @@ public final class Constants {
     // For a solar system, this should be small relative to orbital distances,
     // but large enough to prevent extreme forces at very close approaches.
     // If 1 AU is 1 unit, then 0.001 AU is a reasonable "too close" distance.
-    public static final double MIN_DISTANCE_SQ = 0.001 * 0.001; // ~ (150,000 km)^2 in AU units
+    public static final double MIN_DISTANCE_SQ = 0.0001 * 0.0001; // ~ (150,000 km)^2 in AU units
 
     // Collision elasticity (keep for now, but will be modified for destruction)
     public static final double COLLISION_ELASTICITY = 0.5; // Still allows some bounce for other collisions
 
     // Time step: How much simulation time passes per update.
     // If 1 time unit = 1 Earth Year, then 0.001 would be about 0.365 days per step.
-    public static final double TIME_STEP = 0.001; // In Earth Years per simulation step
+    public static final double TIME_STEP = 0.0005; // In Earth Years per simulation step
 
     // UI/Rendering related constants (can be adjusted for visual clarity)
     public static final double SUN_DISPLAY_RADIUS_MULTIPLIER = 50000.0; // To make the Sun visible, as its real size is tiny on an AU scale
     public static final double PLANET_DISPLAY_RADIUS_MULTIPLIER = 1000000.0; // To make planets visible
-    public static final int MAX_TRAIL_LENGTH = 500; // Longer trails for clearer orbits
+        // Visual & Trail Constants
+    public static final int MAX_TRAIL_LENGTH = 1000; // Increased for longer, more complete orbits
+    public static final double TRAIL_STROKE_WIDTH = 0; // Adjusted for better visibility
+    public static final double RING_THICKNESS = 0.015; // Thickness for Saturn's ring
 
+    // Camera Constants
+    public static final double CAMERA_INITIAL_Z = -40; // Pulled camera back
+    public static final double CAMERA_FAR_CLIP = 50000.0; // Increased far clip distance
     // Prevent instantiation
     private Constants() {}
 }

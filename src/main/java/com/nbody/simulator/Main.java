@@ -3,32 +3,44 @@ package com.nbody.simulator;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.*;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
-import javafx.stage.*;
-import javafx.scene.*;
-import java.util.*;
+import javafx.stage.Stage;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 public class Main extends Application {
     // Simulation components
     private Simulator simulator;
     private AnimationTimer gameLoop;
     private boolean isPaused = false;
-    private double simulationSpeed = 1.0; // Default simulation speed
-    private Map<String, CelestialBody3D> celestialBodies = new HashMap<>();
+    private double simulationSpeed = 1.0;
+    private final Map<String, CelestialBody3D> celestialBody3DMap = new HashMap<>();
+    private final Random random = new Random();
+    private int randomBodyCounter = 0;
 
     // 3D scene components
-    private Group solarSystem; // Group for celestial bodies that will be rotated/scaled
-    private final Group world = new Group(); // Root for 3D content in SubScene
+    private Group solarSystem;
+    private final Group world = new Group();
     private Scene scene;
-    private BorderPane mainLayout; // Main layout for the scene, will hold SubScene and controls
-    
+    private BorderPane mainLayout;
+
     // 3D control variables
     private double anchorX, anchorY;
     private double anchorAngleX = 0;
@@ -36,278 +48,383 @@ public class Main extends Application {
     private final DoubleProperty angleX = new SimpleDoubleProperty(0);
     private final DoubleProperty angleY = new SimpleDoubleProperty(0);
 
-    // Control panel components
-    private VBox controlPanel;
-    private Slider speedSlider; // Slider to control simulationSpeed
-    // Removed unused ComboBox, Label, and Slider declarations for body properties for this fix
+    // UI Components
+    private ComboBox<String> bodySelectorComboBox;
+    private TextField massTextField;
+    private TextField velocityXTextField;
+    private TextField velocityYTextField;
+    private TextField gravitationalConstantTextField;
 
 
     @Override
     public void start(Stage primaryStage) {
-        mainLayout = new BorderPane(); // This will be the root for the scene graph
-
-        // Create 3D scene components
-        solarSystem = new Group();
-        world.getChildren().add(solarSystem); // solarSystem group will contain all celestial body 3D nodes
-
-        PerspectiveCamera camera = new PerspectiveCamera(true);
-        camera.setNearClip(0.1);
-        camera.setFarClip(10000.0);
-        // Adjusted camera Z position for earthX = 1.0 AU
-        camera.setTranslateZ(-15); // Closer to see objects at a distance of ~1 unit
-
-        // Create SubScene for 3D content
-        // The SubScene allows separating 3D rendering from the main UI layout
-        SubScene subScene3D = new SubScene(world, 1000, 780, true, SceneAntialiasing.BALANCED);
-        subScene3D.setFill(Color.BLACK);
-        subScene3D.setCamera(camera);
-
-        mainLayout.setCenter(subScene3D); // Place the 3D SubScene in the center of the BorderPane
-
-        // Initialize simulator
+        mainLayout = new BorderPane();
         simulator = new Simulator();
 
-        // Setup Initial Bodies
-        setupSolarSystemBodies(); // This adds bodies to the simulator and 3D spheres to solarSystem group
+        SubScene subScene3D = setup3DScene();
+        mainLayout.setCenter(subScene3D);
 
-        // Setup Control Panel for simulation speed
-        controlPanel = new VBox(10); // Spacing of 10 between elements
-        controlPanel.setPadding(new Insets(10));
-        controlPanel.setAlignment(Pos.TOP_CENTER);
-        controlPanel.setPrefWidth(200); // Give the control panel a preferred width
+        setupSolarSystemBodies();
 
-        Label speedLabel = new Label("Simulation Speed:");
-        // Slider: min speed, max speed, initial speed
-        speedSlider = new Slider(0.1, 5, 1.0); // Speed from 0.1x to 100x
-        speedSlider.setShowTickLabels(true);
-        speedSlider.setShowTickMarks(true);
-        speedSlider.setMajorTickUnit(25);
-        speedSlider.setMinorTickCount(5);
-        speedSlider.setBlockIncrement(10); // Amount to adjust with arrow keys
+        VBox controlPanel = setupControlPanel();
+        mainLayout.setRight(controlPanel);
 
-        // Label to display the current speed value, bound to the slider's value
-        Label currentSpeedLabel = new Label();
-        currentSpeedLabel.textProperty().bind(
-            Bindings.createStringBinding(
-                () -> String.format("Speed: %.1fx", speedSlider.getValue()),
-                speedSlider.valueProperty()
-            )
-        );
-
-        // Update simulationSpeed when slider changes
-        speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            simulationSpeed = newVal.doubleValue();
-        });
-
-        controlPanel.getChildren().addAll(speedLabel, speedSlider, currentSpeedLabel);
-        mainLayout.setRight(controlPanel); // Add control panel to the right side of the BorderPane
-
-        // Create the main scene with mainLayout as its root
-        scene = new Scene(mainLayout, 1200, 800, true); // Overall window size
-
-        // Initialize mouse controls for the 3D SubScene (rotation and zoom)
+        scene = new Scene(mainLayout, 1400, 900, true);
         initMouseControl(subScene3D, solarSystem);
 
-        // Game Loop
-        gameLoop = new AnimationTimer() {
-            private long lastUpdate = 0;
-
-            @Override
-            public void handle(long now) {
-                if (lastUpdate == 0) {
-                    lastUpdate = now;
-                    return;
-                } 
-                if (!isPaused) {
-                    // Update physics simulation multiple times based on simulation speed
-                    int steps = (int) Math.ceil(simulationSpeed); // Number of simulation steps per frame
-                    // Effective time step for each physics update
-                    double timeStepPerPhysicsUpdate = Constants.TIME_STEP * (simulationSpeed / steps); 
-                    
-                    for (int i = 0; i < steps; i++) {
-                        simulator.update(timeStepPerPhysicsUpdate); // Pass the adjusted time step
-                    }
-                    
-                    // Update 3D body positions
-                    for (Body body : simulator.getBodies()) { //
-                        CelestialBody3D body3D = celestialBodies.get(body.getId()); //
-                        if (body3D != null) {
-                            body3D.setPosition(
-                                body.getPosition().x, //
-                                body.getPosition().y, //
-                                0  // Keep z=0 for 2D simulation in 3D space
-                            );
-                        }
-                    }
-                }
-                // Note: lastUpdate = now; was missing from the original game loop, which could affect calculations
-                // if time delta per frame was intended to be used. However, current logic uses fixed steps.
-            }
-        };
-        gameLoop.start();      
+        startGameLoop();
+        updateBodySelector();
 
         primaryStage.setScene(scene);
-        primaryStage.setTitle("Gravity Simulator: Interactive");
+        primaryStage.setTitle("Interactive Solar System Simulator");
         primaryStage.show();
     }
 
-    private void setupSolarSystemBodies() {
-        // Define actual astronomical unit radii for scaling (approximate)
-        // double sunActualRadiusAU = 0.00465; // Sun's radius in AU
-        // double earthActualRadiusAU = 0.000043; // Earth's radius in AU
+    private SubScene setup3DScene() {
+        solarSystem = new Group();
+        world.getChildren().add(solarSystem);
 
-        // Define desired display radii for a visually appealing simulation where Earth orbits at 1 AU
-        // These are arbitrary values for visualization, not direct physical scaling for this example.
-        double sunDisplayRadius = 0.2;  // Make Sun larger on screen
-        double earthDisplayRadius = 0.05; // Make Earth smaller, but visible
-        double mercuryDisplayRadius = 0.02; // Mercury's display radius
-        double venusDisplayRadius = 0.03; // Venus's display radius 
-        double marsDisplayRadius = 0.025; // Mars's display radius
-        double jupiterDisplayRadius = 0.1; // Jupiter's display radius
-        double saturnDisplayRadius = 0.08; // Saturn's display radius
-        double uranusDisplayRadius = 0.06; // Uranus's display radius
-        double neptuneDisplayRadius = 0.05; // Neptune's display radius
+        PerspectiveCamera camera = new PerspectiveCamera(true);
+        camera.setNearClip(0.1);
+        // Adjusted for better orbit viewing
+        camera.setFarClip(Constants.CAMERA_FAR_CLIP);
+        camera.setTranslateZ(Constants.CAMERA_INITIAL_Z);
 
-
-        double mercuryX = 0.39; // Mercury's distance from Sun in AU
-        double venusX = 0.72; // Venus's distance from Sun in AU
-        double marsX = 1.52; // Mars's distance from Sun in AU
-        double jupiterX = 5.2; // Jupiter's distance from Sun in AU
-        double saturnX = 9.58; // Saturn's distance from Sun in AU
-        double uranusX = 19.22; // Uranus's distance from Sun in AU
-        double neptuneX = 30.05; // Neptune's distance from Sun in AU
+        SubScene subScene3D = new SubScene(world, 1000, 880, true, SceneAntialiasing.DISABLED);
+        subScene3D.setFill(Color.BLACK);
+        subScene3D.setCamera(camera);
         
-        double mercuryOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / mercuryX);
-        double venusOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / venusX);
-        double marsOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / marsX);
-        double jupiterOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / jupiterX);
-        double saturnOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / saturnX);
-        double uranusOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / uranusX);
-        double neptuneOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / neptuneX);
+        return subScene3D;
+    }
 
-        // Create and add the other planets
-        CelestialBody3D mercury3D = new CelestialBody3D("Mercury", mercuryDisplayRadius, Color.GRAY);
-        mercury3D.setPosition(mercuryX, 0, 0);  
-        mercury3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Mercury", mercury3D);
-        solarSystem.getChildren().add(mercury3D.getNode()); //
-        simulator.addBody(new Body("Mercury", 3.285E-7, mercuryDisplayRadius, Color.GRAY, // Mercury's mass
-                new Vector2D(mercuryX, 0), new Vector2D(0, mercuryOrbitalVelocity))); // Initial position and velocity
+    private VBox setupControlPanel() {
+        VBox controlPanel = new VBox(15);
+        controlPanel.setPadding(new Insets(15));
+        controlPanel.setAlignment(Pos.TOP_CENTER);
+        controlPanel.setPrefWidth(380);
+        controlPanel.setStyle("-fx-background-color:rgb(189, 189, 189);");
 
-        CelestialBody3D venus3D = new CelestialBody3D("Venus", venusDisplayRadius, Color.YELLOW);   
-        venus3D.setPosition(venusX, 0, 0);
-        venus3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Venus", venus3D);
-        solarSystem.getChildren().add(venus3D.getNode()); //
-        simulator.addBody(new Body("Venus", 4.867E-6, venusDisplayRadius, Color.YELLOW, // Venus's mass
-                new Vector2D(venusX, 0), new Vector2D(0, venusOrbitalVelocity))); // Initial position and velocity
-        CelestialBody3D mars3D = new CelestialBody3D("Mars", marsDisplayRadius, Color.RED);
-        mars3D.setPosition(marsX, 0, 0);
-        mars3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Mars", mars3D);
-        solarSystem.getChildren().add(mars3D.getNode()); //
-        simulator.addBody(new Body("Mars", 3.21E-7, marsDisplayRadius, Color.RED, // Mars's mass
-                new Vector2D(marsX, 0), new Vector2D(0, marsOrbitalVelocity))); // Initial position and velocity
+        // Simulation Speed Control
+        Label speedLabel = new Label("Simulation Speed:");
+        Slider speedSlider = new Slider(0.1, 10, 1.0);
+        speedSlider.setShowTickLabels(true);
+        speedSlider.setShowTickMarks(true);
+        speedSlider.setMajorTickUnit(2);
+        speedSlider.setMinorTickCount(1);
+        speedSlider.setBlockIncrement(1);
+        Label currentSpeedLabel = new Label();
+        currentSpeedLabel.textProperty().bind(
+                Bindings.createStringBinding(() -> String.format("Speed: %.1fx", speedSlider.getValue()), speedSlider.valueProperty())
+        );
+        speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> simulationSpeed = newVal.doubleValue());
+        controlPanel.getChildren().addAll(speedLabel, speedSlider, currentSpeedLabel);
 
-        CelestialBody3D jupiter3D = new CelestialBody3D("Jupiter", jupiterDisplayRadius, Color.rgb(216, 202, 157));
-        jupiter3D.setPosition(jupiterX, 0, 0);
-        jupiter3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Jupiter", jupiter3D);
-        solarSystem.getChildren().add(jupiter3D.getNode()); //
-        simulator.addBody(new Body("Jupiter", 1.898E-3, jupiterDisplayRadius, Color.ORANGE, // Jupiter's mass
-                new Vector2D(jupiterX, 0), new Vector2D(0, jupiterOrbitalVelocity))); // Initial position and velocity  
+        // Gravitational Constant Control
+        controlPanel.getChildren().add(new Separator());
+        Label gLabel = new Label("Gravitational Constant (G):");
+        gravitationalConstantTextField = new TextField(String.valueOf(Constants.GRAVITATIONAL_CONSTANT));
+        Button updateGButton = new Button("Update G");
+        updateGButton.setOnAction(e -> {
+            try {
+                double newG = Double.parseDouble(gravitationalConstantTextField.getText());
+                Constants.GRAVITATIONAL_CONSTANT = newG;
+                System.out.println("Gravitational constant updated to: " + newG);
+            } catch (NumberFormatException ex) {
+                showErrorDialog("Invalid G Value", "Please enter a valid number for G.");
+            }
+        });
+        HBox gBox = new HBox(10, gravitationalConstantTextField, updateGButton);
+        gBox.setAlignment(Pos.CENTER_LEFT);
+        controlPanel.getChildren().addAll(gLabel, gBox);
 
-        CelestialBody3D saturn3D = new CelestialBody3D("Saturn", saturnDisplayRadius, Color.YELLOW);
-        saturn3D.setPosition(saturnX, 0, 0);
-        saturn3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Saturn", saturn3D);
-        solarSystem.getChildren().add(saturn3D.getNode()); //
-        simulator.addBody(new Body("Saturn", 5.683E-4, saturnDisplayRadius, Color.YELLOW, // Saturn's mass
-                new Vector2D(saturnX, 0), new Vector2D(0, saturnOrbitalVelocity))); // Initial position and velocit
-        CelestialBody3D uranus3D = new CelestialBody3D("Uranus", uranusDisplayRadius, Color.CYAN);
-        uranus3D.setPosition(uranusX, 0, 0);
-        uranus3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Uranus", uranus3D);
-        solarSystem.getChildren().add(uranus3D.getNode()); //
-        simulator.addBody(new Body("Uranus", 8.681E-4, uranusDisplayRadius, Color.CYAN, // Uranus's mass
-                new Vector2D(uranusX, 0), new Vector2D(0, uranusOrbitalVelocity))); // Initial position and velocity
+        // Body Selection and Modification
+        controlPanel.getChildren().add(new Separator());
+        Label selectBodyLabel = new Label("Modify Celestial Body:");
+        bodySelectorComboBox = new ComboBox<>();
+        bodySelectorComboBox.setPromptText("Select Body");
+        bodySelectorComboBox.setMaxWidth(Double.MAX_VALUE);
+        bodySelectorComboBox.setOnAction(e -> loadSelectedBodyProperties());
 
-        CelestialBody3D neptune3D = new CelestialBody3D("Neptune", neptuneX, Color.BLUE);
-        neptune3D.setPosition(neptuneX, 0, 0);
-        neptune3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Neptune", neptune3D);
-        solarSystem.getChildren().add(neptune3D.getNode()); //
-        simulator.addBody(new Body("Neptune", 1.024E-4, neptuneDisplayRadius, Color.BLUE, // Neptune's mass
-                new Vector2D(neptuneX, 0), new Vector2D(0, neptuneOrbitalVelocity))); // Initial position and velocity
-
-
-        // Create and add the Sun
-        CelestialBody3D sun3D = new CelestialBody3D("Sun", sunDisplayRadius, "/2k_sun.jpg");
-        sun3D.setPosition(0, 0, 0);
-        sun3D.setRotationSpeed(0.01); // Visual rotation of the sphere
-        celestialBodies.put("Sun", sun3D);
-        solarSystem.getChildren().add(sun3D.getNode());
-        // The Body's radius parameter is used for collision detection in PhysicsEngine
-        // and 2D drawing in SimulationPanel (if used).
-        // We use the same displayRadius here for consistency.
-        simulator.addBody(new Body("Sun", 1.0, sunDisplayRadius, Color.YELLOW, // Sun's mass is 1.0
-                new Vector2D(0, 0), new Vector2D(0.01, 0.01))); //
-
-        // Create Earthf
-        CelestialBody3D earth3D = new CelestialBody3D("Earth", earthDisplayRadius, "/earth/earth-d.jpg"); //
-        double earthX = 1.0;  // Set Earth's distance from Sun to 1.0 AU
-        earth3D.setPosition(earthX, 0, 0); //
-        earth3D.setRotationSpeed(0.24); // Visual rotation of the sphere
-        celestialBodies.put("Earth", earth3D);
-        solarSystem.getChildren().add(earth3D.getNode()); //
-
-        // Calculate the required orbital velocity for Earth
-        // v = sqrt(G * M_sun / r)
-        // M_sun is 1.0 (as per Sun's body definition)
-        // G is Constants.GRAVITATIONAL_CONSTANT
-        // r is earthX
-        double earthOrbitalVelocity = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT / earthX);
-
-        simulator.addBody(new Body("Earth", 3.003E-6, earthDisplayRadius, Color.BLUE, // Earth's mass
-                new Vector2D(earthX, 0), new Vector2D(0, earthOrbitalVelocity))); // Initial position and corrected velocity
+        GridPane propertiesGrid = new GridPane();
+        propertiesGrid.setHgap(10);
+        propertiesGrid.setVgap(8);
+        propertiesGrid.setPadding(new Insets(5,0,5,0));
+        propertiesGrid.add(new Label("Mass:"), 0, 0);
+        massTextField = new TextField();
+        propertiesGrid.add(massTextField, 1, 0);
+        propertiesGrid.add(new Label("Velocity X:"), 0, 1);
+        velocityXTextField = new TextField();
+        propertiesGrid.add(velocityXTextField, 1, 1);
+        propertiesGrid.add(new Label("Velocity Y:"), 0, 2);
+        velocityYTextField = new TextField();
+        propertiesGrid.add(velocityYTextField, 1, 2);
+        Button applyChangesButton = new Button("Apply Body Changes");
+        applyChangesButton.setMaxWidth(Double.MAX_VALUE);
+        applyChangesButton.setOnAction(e -> applyBodyModifications());
+        controlPanel.getChildren().addAll(selectBodyLabel, bodySelectorComboBox, propertiesGrid, applyChangesButton);
         
-        // Removed redundant call to initMouseControl() here
-    }    
-    
-    // Modified initMouseControl to accept the node for attaching events (SubScene)
-    // and the group to apply transformations (solarSystem)
-    private void initMouseControl(Node eventNode, Group groupToTransform) {
-        Rotate xRotate = new Rotate(0, Rotate.X_AXIS);
-        Rotate yRotate = new Rotate(0, Rotate.Y_AXIS);
-        groupToTransform.getTransforms().addAll(xRotate, yRotate); // Apply rotations to the solarSystem group
-        xRotate.angleProperty().bind(angleX); //
-        yRotate.angleProperty().bind(angleY); //
+        // Add Random Body
+        controlPanel.getChildren().add(new Separator());
+        Button addRandomBodyButton = new Button("Add Random Body");
+        addRandomBodyButton.setMaxWidth(Double.MAX_VALUE);
+        addRandomBodyButton.setOnAction(e -> addRandomCelestialBody());
+        controlPanel.getChildren().add(addRandomBodyButton);
 
-        eventNode.setOnMousePressed(event -> { // Attach events to the SubScene
-            anchorX = event.getSceneX(); //
-            anchorY = event.getSceneY(); //
-            anchorAngleX = angleX.get(); //
-            anchorAngleY = angleY.get(); //
-        });
+        // Pause Button
+        controlPanel.getChildren().add(new Separator());
+        Button pauseButton = new Button("Pause/Resume");
+        pauseButton.setMaxWidth(Double.MAX_VALUE);
+        pauseButton.setOnAction(e -> isPaused = !isPaused);
+        controlPanel.getChildren().add(pauseButton);
 
-        eventNode.setOnMouseDragged(event -> { // Attach events to the SubScene
-            angleX.set(anchorAngleX - (anchorY - event.getSceneY()) * 0.5); //
-            angleY.set(anchorAngleY + (anchorX - event.getSceneX()) * 0.5); //
-        });
+        return controlPanel;
+    }
 
-        eventNode.setOnScroll(event -> { // Attach events to the SubScene
-            double zoomFactor = event.getDeltaY() > 0 ? 1.1 : 1/1.1; //
-            groupToTransform.setScaleX(groupToTransform.getScaleX() * zoomFactor); //
-            groupToTransform.setScaleY(groupToTransform.getScaleY() * zoomFactor); //
-            groupToTransform.setScaleZ(groupToTransform.getScaleZ() * zoomFactor); //
+    private void loadSelectedBodyProperties() {
+        String selectedBodyId = bodySelectorComboBox.getValue();
+        if (selectedBodyId == null) return;
+        simulator.getBodyById(selectedBodyId).ifPresent(body -> {
+            massTextField.setText(String.format("%.2e", body.getMass()));
+            velocityXTextField.setText(String.format("%.2e", body.getVelocity().x));
+            velocityYTextField.setText(String.format("%.2e", body.getVelocity().y));
         });
     }
 
-    // Zoom and offset methods are not used by the 3D view directly,
-    // they were part of SimulationPanel logic or older concepts.
-    // public void setZoom(double zoom) { this.zoom = zoom; }
-    // public void setOffsetX(double offsetX) { this.offsetX = offsetX; }
-    // public void setOffsetY(double offsetY) { this.offsetY = offsetY; }
+    private void applyBodyModifications() {
+        String selectedBodyId = bodySelectorComboBox.getValue();
+        if (selectedBodyId == null) {
+            showErrorDialog("No Body Selected", "Please select a body to modify.");
+            return;
+        }
+        Optional<Body> bodyOpt = simulator.getBodyById(selectedBodyId);
+        if (!bodyOpt.isPresent()) {
+            showErrorDialog("Body Not Found", "The selected body no longer exists.");
+            return;
+        }
+        Body body = bodyOpt.get();
+        try {
+            double newMass = Double.parseDouble(massTextField.getText());
+            double newVelX = Double.parseDouble(velocityXTextField.getText());
+            double newVelY = Double.parseDouble(velocityYTextField.getText());
+            if (newMass <= 0) {
+                 showErrorDialog("Invalid Mass", "Mass must be a positive value.");
+                 return;
+            }
+            body.setMass(newMass);
+            body.setVelocity(new Vector2D(newVelX, newVelY));
+            // Optional: Clear trail for this body as its orbit will change drastically
+            celestialBody3DMap.get(selectedBodyId).clearTrail();
+            System.out.println("Applied changes to: " + selectedBodyId);
+        } catch (NumberFormatException ex) {
+            showErrorDialog("Invalid Input", "Please enter valid numbers.");
+        }
+    }
+    
+    private void addRandomCelestialBody() {
+        randomBodyCounter++;
+        String name = "RandBody-" + randomBodyCounter;
+        double mass = (random.nextDouble() * 1e-5) + 1e-7; 
+        double displayRadius = (random.nextDouble() * 0.03) + 0.01;
+        double angle = random.nextDouble() * 2 * Math.PI;
+        double distance = (random.nextDouble() * 10) + 2; 
+        double posX = distance * Math.cos(angle);
+        double posY = distance * Math.sin(angle);
+        double centralMass = simulator.getBodyById("Sun").map(Body::getMass).orElse(1.0);
+        double orbitalVelMag = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * centralMass / distance);
+        double velX = -orbitalVelMag * Math.sin(angle) + (random.nextDouble() - 0.5) * 0.5;
+        double velY = orbitalVelMag * Math.cos(angle) + (random.nextDouble() - 0.5) * 0.5;
+        Color bodyColor = Color.rgb(random.nextInt(200)+55, random.nextInt(200)+55, random.nextInt(200)+55); // Brighter random colors
+        Color trailColor = Color.BLACK; // Trail color set to black
+
+        createAndAddCelestialBody(name, displayRadius, bodyColor, trailColor, mass, posX, posY, velX, velY, 0.1);
+        updateBodySelector();
+    }
+
+    // Overload for color-defined bodies
+    private void createAndAddCelestialBody(String name, double displayRadius, Color bodyColor, Color trailColor,
+                                           double mass, double initialX, double initialY,
+                                           double initialVelX, double initialVelY,
+                                           double visualRotationSpeed) {
+        CelestialBody3D body3D = new CelestialBody3D(name, displayRadius, bodyColor, trailColor, solarSystem);
+        setupCelestialBody(body3D, name, mass, displayRadius, initialX, initialY, initialVelX, initialVelY, visualRotationSpeed);
+    }
+
+    // Overload for texture-defined bodies
+    private void createAndAddCelestialBody(String name, double displayRadius, String texturePath, Color trailColor,
+                                           double mass, double initialX, double initialY,
+                                           double initialVelX, double initialVelY,
+                                           double visualRotationSpeed) {
+        CelestialBody3D body3D = new CelestialBody3D(name, displayRadius, texturePath, trailColor, solarSystem);
+        setupCelestialBody(body3D, name, mass, displayRadius, initialX, initialY, initialVelX, initialVelY, visualRotationSpeed);
+    }
+
+    private void setupCelestialBody(CelestialBody3D body3D, String name, double mass, double displayRadius,
+                                    double initialX, double initialY, double initialVelX, double initialVelY,
+                                    double visualRotationSpeed) {
+        body3D.setPosition(initialX, initialY, 0);
+        body3D.setRotationSpeed(visualRotationSpeed);
+        celestialBody3DMap.put(name, body3D);
+
+        Color physicsBodyColor = Color.GRAY; // Fallback for the Body object
+        Node node = body3D.getNode();
+        if (node instanceof Sphere) {
+            Sphere sphere = (Sphere) node;
+            if (sphere.getMaterial() instanceof PhongMaterial) {
+                PhongMaterial phongMaterial = (PhongMaterial) sphere.getMaterial();
+                if (phongMaterial.getDiffuseColor() != null) {
+                     physicsBodyColor = phongMaterial.getDiffuseColor();
+                }
+            }
+        }
+        
+        simulator.addBody(new Body(name, mass, displayRadius, physicsBodyColor,
+                new Vector2D(initialX, initialY), new Vector2D(initialVelX, initialVelY)));
+    }
+
+    private void setupSolarSystemBodies() {
+        // Display Radii
+        double sunDisplayRadius = 0.2;
+        double mercuryDisplayRadius = 0.02;
+        double venusDisplayRadius = 0.03;
+        double earthDisplayRadius = 0.04;
+        double marsDisplayRadius = 0.025;
+        double jupiterDisplayRadius = 0.1;
+        double saturnDisplayRadius = 0.09;
+        double uranusDisplayRadius = 0.06;
+        double neptuneDisplayRadius = 0.055;
+
+        double sunMass = 1.0;
+
+        // Define Trail Colors (inspired by the diagram)
+        Color mercuryTrailColor = Color.rgb(180, 180, 180); // Light Grey
+        Color venusTrailColor = Color.rgb(255, 200, 100); // Light Yellow
+        Color earthTrailColor = Color.rgb(0, 122, 255); // Bright Blue
+        Color marsTrailColor = Color.rgb(255, 100, 100); // Light Red
+        Color jupiterTrailColor = Color.rgb(255, 200, 150); // Light Brown
+        Color saturnTrailColor = Color.rgb(160, 100, 200); // Purple-ish
+        Color uranusTrailColor = Color.rgb(0, 220, 180);   // Cyan/Green
+        Color neptuneTrailColor = Color.rgb(0, 0, 205);  // Medium Blue / DodgerBlue
+
+        // Sun (no trail needed or very faint if desired)
+        createAndAddCelestialBody("Sun", sunDisplayRadius, "/2k_sun.jpg", Color.rgb(255,223,186,0.1) , sunMass, 0, 0, 0, 0, 0.01);
+
+        double mercuryX = 0.39; double mercuryMass = 1.652e-7;
+        double mercuryVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / mercuryX);
+        createAndAddCelestialBody("Mercury", mercuryDisplayRadius, Color.GRAY, mercuryTrailColor, mercuryMass, mercuryX, 0, 0, mercuryVel, 0.24);
+
+        double venusX = 0.72; double venusMass = 2.447e-6;
+        double venusVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / venusX);
+        createAndAddCelestialBody("Venus", venusDisplayRadius, Color.rgb(255,230,100), venusTrailColor, venusMass, venusX, 0, 0, venusVel, 0.15);
+
+        double earthX = 1.0; double earthMass = 3.003e-6;
+        double earthVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / earthX);
+        createAndAddCelestialBody("Earth", earthDisplayRadius, "/earth/earth-d.jpg", earthTrailColor, earthMass, earthX, 0, 0, earthVel, 0.24);
+
+        double marsX = 1.52; double marsMass = 3.213e-7;
+        double marsVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / marsX);
+        createAndAddCelestialBody("Mars", marsDisplayRadius, Color.rgb(190,80,60), marsTrailColor, marsMass, marsX, 0, 0, marsVel, 0.20);
+
+        double jupiterX = 5.2; double jupiterMass = 9.548e-4;
+        double jupiterVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / jupiterX);
+        createAndAddCelestialBody("Jupiter", jupiterDisplayRadius, Color.rgb(216, 202, 157), jupiterTrailColor, jupiterMass, jupiterX, 0, 0, jupiterVel, 0.1);
+
+        double saturnX = 9.58; double saturnMass = 2.857e-4;
+        double saturnVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / saturnX);
+        createAndAddCelestialBody("Saturn", saturnDisplayRadius, Color.KHAKI, saturnTrailColor, saturnMass, saturnX, 0, 0, saturnVel, 0.08);
+        CelestialBody3D saturn3D = celestialBody3DMap.get("Saturn");
+        if (saturn3D != null) saturn3D.addRing(saturnDisplayRadius * 1.5, saturnDisplayRadius * 2.2, Color.rgb(220,220,190,0.5));
+
+        double uranusX = 19.22; double uranusMass = 4.366e-5;
+        double uranusVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / uranusX);
+        createAndAddCelestialBody("Uranus", uranusDisplayRadius, Color.rgb(170,225,230), uranusTrailColor, uranusMass, uranusX, 0, 0, uranusVel, 0.05);
+
+        double neptuneX = 30.05; double neptuneMass = 5.151e-5;
+        double neptuneVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / neptuneX);
+        createAndAddCelestialBody("Neptune", neptuneDisplayRadius, Color.rgb(60,100,200), neptuneTrailColor, neptuneMass, neptuneX, 0, 0, neptuneVel, 0.04);
+    }
+
+    private void startGameLoop() {
+        gameLoop = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (!isPaused) {
+                    int steps = (int) Math.max(1, Math.ceil(simulationSpeed));
+                    double timeStepPerPhysicsUpdate = Constants.TIME_STEP * (simulationSpeed / steps);
+
+                    for (int i = 0; i < steps; i++) {
+                        simulator.update(timeStepPerPhysicsUpdate);
+                    }
+
+                    List<String> removedBodyIds = simulator.processRemovals();
+                    if (!removedBodyIds.isEmpty()) {
+                        removedBodyIds.forEach(id -> {
+                            CelestialBody3D cBody3D = celestialBody3DMap.remove(id);
+                            if (cBody3D != null) cBody3D.removeFromScene();
+                        });
+                        updateBodySelector();
+                        if (bodySelectorComboBox.getValue() != null && removedBodyIds.contains(bodySelectorComboBox.getValue())) {
+                            bodySelectorComboBox.setValue(null);
+                            massTextField.clear();
+                            velocityXTextField.clear();
+                            velocityYTextField.clear();
+                        }
+                    }
+
+                    for (Body body : simulator.getBodies()) {
+                        CelestialBody3D body3D = celestialBody3DMap.get(body.getId());
+                        if (body3D != null) {
+                            body3D.setPosition(body.getPosition().x, body.getPosition().y, 0);
+                            body3D.updateTrail(body.getTrail(), false);
+                        }
+                    }
+                }
+            }
+        };
+        gameLoop.start();
+    }
+    
+    private void updateBodySelector() {
+        List<String> bodyNames = simulator.getBodies().stream()
+                                        .map(Body::getId)
+                                        .sorted()
+                                        .collect(Collectors.toList());
+        bodySelectorComboBox.setItems(FXCollections.observableArrayList(bodyNames));
+    }
+
+    private void initMouseControl(Node eventNode, Group groupToTransform) {
+        Rotate xRotate = new Rotate(0, Rotate.X_AXIS);
+        Rotate yRotate = new Rotate(0, Rotate.Y_AXIS);
+        groupToTransform.getTransforms().addAll(xRotate, yRotate);
+        xRotate.angleProperty().bind(angleX);
+        yRotate.angleProperty().bind(angleY);
+
+        eventNode.setOnMousePressed(event -> {
+            anchorX = event.getSceneX();
+            anchorY = event.getSceneY();
+            anchorAngleX = angleX.get();
+            anchorAngleY = angleY.get();
+        });
+
+        eventNode.setOnMouseDragged(event -> {
+            angleX.set(anchorAngleX - (anchorY - event.getSceneY()) * 0.5);
+            angleY.set(anchorAngleY + (anchorX - event.getSceneX()) * 0.5);
+        });
+
+        eventNode.setOnScroll(event -> {
+            double zoomFactor = event.getDeltaY() > 0 ? 1.1 : 1 / 1.1;
+            groupToTransform.setScaleX(groupToTransform.getScaleX() * zoomFactor);
+            groupToTransform.setScaleY(groupToTransform.getScaleY() * zoomFactor);
+            // groupToTransform.setScaleZ(groupToTransform.getScaleZ() * zoomFactor);
+        });
+    }
+
+    private void showErrorDialog(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
 
     public static void main(String[] args) {
         launch(args);
