@@ -86,7 +86,7 @@ public class Main extends Application {
 
         PerspectiveCamera camera = new PerspectiveCamera(true);
         camera.setNearClip(0.1);
-        // Adjusted for better orbit viewing
+        // Can adjust for better orbit viewing
         camera.setFarClip(Constants.CAMERA_FAR_CLIP);
         camera.setTranslateZ(Constants.CAMERA_INITIAL_Z);
 
@@ -106,7 +106,7 @@ public class Main extends Application {
 
         // Simulation Speed Control
         Label speedLabel = new Label("Simulation Speed:");
-        Slider speedSlider = new Slider(0.1, 10, 1.0);
+        Slider speedSlider = new Slider(0.1, 30, 1.0);
         speedSlider.setShowTickLabels(true);
         speedSlider.setShowTickMarks(true);
         speedSlider.setMajorTickUnit(2);
@@ -212,7 +212,7 @@ public class Main extends Application {
             }
             body.setMass(newMass);
             body.setVelocity(new Vector2D(newVelX, newVelY));
-            // Optional: Clear trail for this body as its orbit will change drastically
+            // Clear trail
             celestialBody3DMap.get(selectedBodyId).clearTrail();
             System.out.println("Applied changes to: " + selectedBodyId);
         } catch (NumberFormatException ex) {
@@ -240,7 +240,7 @@ public class Main extends Application {
         updateBodySelector();
     }
 
-    // Overload for color-defined bodies
+    // Overload for colored bodies
     private void createAndAddCelestialBody(String name, double displayRadius, Color bodyColor, Color trailColor,
                                            double mass, double initialX, double initialY,
                                            double initialVelX, double initialVelY,
@@ -249,7 +249,7 @@ public class Main extends Application {
         setupCelestialBody(body3D, name, mass, displayRadius, initialX, initialY, initialVelX, initialVelY, visualRotationSpeed);
     }
 
-    // Overload for texture-defined bodies
+    // Overload for textured bodies
     private void createAndAddCelestialBody(String name, double displayRadius, String texturePath, Color trailColor,
                                            double mass, double initialX, double initialY,
                                            double initialVelX, double initialVelY,
@@ -295,17 +295,17 @@ public class Main extends Application {
 
         double sunMass = 1.0;
 
-        // Define Trail Colors (inspired by the diagram)
+        // Define Trail Colors
         Color mercuryTrailColor = Color.rgb(180, 180, 180); // Light Grey
         Color venusTrailColor = Color.rgb(255, 200, 100); // Light Yellow
         Color earthTrailColor = Color.rgb(0, 122, 255); // Bright Blue
         Color marsTrailColor = Color.rgb(255, 100, 100); // Light Red
         Color jupiterTrailColor = Color.rgb(255, 200, 150); // Light Brown
-        Color saturnTrailColor = Color.rgb(160, 100, 200); // Purple-ish
-        Color uranusTrailColor = Color.rgb(0, 220, 180);   // Cyan/Green
-        Color neptuneTrailColor = Color.rgb(0, 0, 205);  // Medium Blue / DodgerBlue
+        Color saturnTrailColor = Color.rgb(160, 100, 200); // Purpleish
+        Color uranusTrailColor = Color.rgb(0, 220, 180);   // Cyan
+        Color neptuneTrailColor = Color.rgb(0, 0, 205);  // Medium Blue
 
-        // Sun (no trail needed or very faint if desired)
+        // Sun
         createAndAddCelestialBody("Sun", sunDisplayRadius, "/2k_sun.jpg", Color.rgb(255,223,186,0.1) , sunMass, 0, 0, 0, 0, 0.01);
 
         double mercuryX = 0.39; double mercuryMass = 1.652e-7;

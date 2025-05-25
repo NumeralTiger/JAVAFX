@@ -23,26 +23,26 @@ public class CelestialBody3D {
     private final Group bodyGroup;
     private final Group parentGroup;
 
-    // Constructor for color-defined bodies
+    // Constructor for colored bodies
     public CelestialBody3D(String name, double radius, Color bodyColor, Color trailColor, Group parentGroup) {
         this.name = name;
         this.sphere = new Sphere(radius);
         this.parentGroup = parentGroup;
         this.bodyGroup = new Group(sphere);
         initializeBody(bodyColor);
-        this.trailLine = createTrailLine(trailColor); // Use explicit trail color
+        this.trailLine = createTrailLine(trailColor); 
         this.bodyGroup.getChildren().add(trailLine);
         this.parentGroup.getChildren().add(bodyGroup);
     }
 
-    // Constructor for texture-defined bodies
+    // Constructor for textured bodies
     public CelestialBody3D(String name, double radius, String texturePath, Color trailColor, Group parentGroup) {
         this.name = name;
         this.sphere = new Sphere(radius);
         this.parentGroup = parentGroup;
         this.bodyGroup = new Group(sphere);
         initializeBodyWithTexture(texturePath);
-        this.trailLine = createTrailLine(trailColor); // Use explicit trail color
+        this.trailLine = createTrailLine(trailColor); 
         this.bodyGroup.getChildren().add(trailLine);
         this.parentGroup.getChildren().add(bodyGroup);
     }
@@ -81,7 +81,7 @@ public class CelestialBody3D {
     private Polyline createTrailLine(Color trailColor) {
         Polyline polyline = new Polyline();
         polyline.setStroke(trailColor);
-        polyline.setStrokeWidth(Constants.TRAIL_STROKE_WIDTH); // Use constant for thickness
+        polyline.setStrokeWidth(Constants.TRAIL_STROKE_WIDTH); // constant for thickness
         return polyline;
     }
     
@@ -93,7 +93,7 @@ public class CelestialBody3D {
         // Clear existing points
         trailLine.getPoints().clear();
         
-        // Convert orbit points to 3D coordinates
+        // Converting orbit points to 3D coordinates
         List<Double> polylinePoints = orbitPoints.stream()
             .flatMap(p -> List.of(p.x, p.y, zOffset).stream())
             .collect(Collectors.toList());
@@ -105,10 +105,10 @@ public class CelestialBody3D {
         }
         
         trailLine.getPoints().setAll(polylinePoints);
-        trailLine.setStrokeWidth(1.5); // Make lines thinner for better visualization
+        trailLine.setStrokeWidth(1.5); // trail width
     }
 
-    // Modified updateTrail method to support static orbital paths
+    // updateTrail method to support static orbital paths
     public void updateTrail(List<Vector2D> trailPoints, boolean isStaticOrbit) {
         if (trailPoints.size() < 2) {
             trailLine.getPoints().clear();
