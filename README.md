@@ -36,7 +36,7 @@ Follow these simple steps to get the simulator up and running on your machine:
     ```bash
     cd JAVAFX
     ```
-3.  **Open the project in your code editor (optional):**
+3.  **Open the project in your code editor:**
     ```bash
     code .
     ```
