@@ -1,6 +1,6 @@
 # 3D Solar System Simulator - JavaFX
 
-This project is a 3D Solar System Simulator built with **JavaFX**. It provides an interactive and responsive environment to explore celestial mechanics based on fundamental physics principles.
+This project is a 3D Solar System Simulator built with **JavaFX**. It provides an interactive and responsive environment to explore the universe based on fundamental Newton's Laws.
 
 ---
 
