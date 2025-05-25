@@ -318,7 +318,7 @@ public class Main extends Application {
 
         double earthX = 1.0; double earthMass = 3.003e-6;
         double earthVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / earthX);
-        createAndAddCelestialBody("Earth", earthDisplayRadius, "/earth/earth-d.jpg", earthTrailColor, earthMass, earthX, 0, 0, earthVel, 0.24);
+        createAndAddCelestialBody("Earth", earthDisplayRadius, "/earth-d.jpg", earthTrailColor, earthMass, earthX, 0, 0, earthVel, 0.24);
 
         double marsX = 1.52; double marsMass = 3.213e-7;
         double marsVel = Math.sqrt(Constants.GRAVITATIONAL_CONSTANT * sunMass / marsX);
