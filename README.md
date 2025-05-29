@@ -30,7 +30,7 @@ Follow these simple steps to get the simulator up and running on your machine:
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/NumeralTiger/JAVAFX](https://github.com/NumeralTiger/JAVAFX)
+    git clone https://github.com/NumeralTiger/JAVAFX
     ```
 2.  **Navigate into the project directory:**
     ```bash
